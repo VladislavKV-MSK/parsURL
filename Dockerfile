@@ -1,4 +1,4 @@
-FROM golang:1.24.3
+FROM golang:1.24.3 AS builder
 
 WORKDIR /app
 
@@ -7,6 +7,14 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /url-shortener
+RUN CGO_ENABLED=0 GOOS=linux go build -o url-shortener ./main.go
 
-CMD ["/url-shortener"]
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/url-shortener .
+
+RUN apk add --no-cache ca-certificates
+
+CMD ["./url-shortener"]
