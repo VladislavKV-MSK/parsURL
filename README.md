@@ -36,13 +36,13 @@ Microservice for URL shortening with web interface, using Gin, GORM and PostgreS
 - Responsive design
 
 ## 💻 Technologies
-**Go 1.24** (with modules)
-**Gin** - HTTP framework
-**GORM** - PostgreSQL ORM
-**PostgreSQL 13** - database
-**Docker** - containerization
-**HTML5/CSS3** - web interface
-**JavaScript** - frontend interactivity
+- **Go 1.24** (with modules)
+- **Gin** - HTTP framework
+- **GORM** - PostgreSQL ORM
+- **PostgreSQL 13** - database
+- **Docker** - containerization
+- **HTML5/CSS3** - web interface
+- **JavaScript** - frontend interactivity
 
 ## 🛠 Installation
 
