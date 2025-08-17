@@ -7,7 +7,7 @@ import (
 
 type URL struct {
 	gorm.Model
-	OriginalURL string `gorm:"not null"`
+	OriginalURL string `gorm:"uniqueIndex;not null"`
 	ShortCode   string `gorm:"unique;not null"`
 }
 

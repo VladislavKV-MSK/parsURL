@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            min-height: 50px;
+            border-radius: 4px;
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+        .success {
+            border-left: 4px solid #4CAF50;
+            background-color: #f0fff0;
+        }
+        .error {
+            border-left: 4px solid #d32f2f;
+            background-color: #fff0f0;
+            color: #d32f2f;
+        }
+        .loading {
+            color: #2196F3;
+        }
+        .url-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .copy-btn {
+            margin-left: 10px;
+            padding: 2px 8px;
+            background-color: #2196F3;
+            font-size: 12px;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .copy-btn:hover {
+            background-color: #0b7dda;
+        }
+        .notice {
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .notice.warning {
+            background-color: #fff3e0;
+            color: #ff6d00;
+            border-left: 3px solid #ff9800;
+        }
+        .notice.info {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            border-left: 3px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Shortener</h1>
+        
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Введите URL (например, https://example.com)">
+            <button id="submitBtn">Сократить</button>
+        </div>
+        
+        <div id="validationError" class="error" style="display: none;"></div>
+        
+        <div>
+            <h3>Результат:</h3>
+            <div class="result" id="result">Здесь появится сокращенная ссылка</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlInput = document.getElementById('urlInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            const validationError = document.getElementById('validationError');
+            
+            function isValidUrl(url) {
+                try {
+                    new URL(url);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+            
+            async function copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (err) {
+                    console.error('Ошибка копирования:', err);
+                    return false;
+                }
+            }
+            
+            submitBtn.addEventListener('click', async function() {
+                const url = urlInput.value.trim();
+                validationError.style.display = 'none';
+                
+                if (!url) {
+                    showError('Пожалуйста, введите URL');
+                    return;
+                }
+                
+                if (!isValidUrl(url)) {
+                    showError('Введите корректный URL (начинается с http:// или https://)');
+                    return;
+                }
+                
+                try {
+                    setLoadingState(true);
+                    resultDiv.className = 'result loading';
+                    resultDiv.textContent = 'Сокращаем ссылку...';
+                    
+                    const response = await fetch('http://localhost:8080/shorten', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: url })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || `Ошибка сервера: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.short_url) {
+                        throw new Error('Неверный формат ответа сервера');
+                    }
+                    
+                    resultDiv.className = 'result success';
+                    let resultHTML = `
+                        <strong>Сокращенная ссылка:</strong><br>
+                        <a href="${data.short_url}" target="_blank">${data.short_url}</a>
+                        <button id="copyBtn" class="copy-btn">Копировать</button>
+                        <div class="url-info">
+                            Оригинальный URL: <span class="original-url">${url}</span><br>
+                            Время обработки: ${new Date().toLocaleTimeString()}
+                        </div>
+                    `;
+                    
+                    if (data.is_duplicate) {
+                        resultHTML += `
+                            <div class="notice warning">
+                                ⚠️ Эта ссылка уже была сокращена ранее
+                                ${data.created_at ? ' (в ' + new Date(data.created_at).toLocaleString() + ')' : ''}
+                            </div>
+                        `;
+                    } else {
+                        resultHTML += `
+                            <div class="notice info">
+                                ✅ Новая сокращенная ссылка
+                            </div>
+                        `;
+                    }
+                    
+                    resultDiv.innerHTML = resultHTML;
+                    
+                    document.getElementById('copyBtn').addEventListener('click', async () => {
+                        const copied = await copyToClipboard(data.short_url);
+                        if (copied) {
+                            const btn = document.getElementById('copyBtn');
+                            btn.textContent = 'Скопировано!';
+                            setTimeout(() => {
+                                btn.textContent = 'Копировать';
+                            }, 2000);
+                        }
+                    });
+                    
+                } catch (error) {
+                    showError(error.message);
+                    console.error('Ошибка:', error);
+                } finally {
+                    setLoadingState(false);
+                }
+            });
+            
+            function showError(message) {
+                validationError.textContent = message;
+                validationError.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Не удалось сократить ссылку';
+            }
+            
+            function setLoadingState(isLoading) {
+                submitBtn.disabled = isLoading;
+                submitBtn.textContent = isLoading ? 'Обработка...' : 'Сократить';
+            }
+            
+            urlInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitBtn.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
