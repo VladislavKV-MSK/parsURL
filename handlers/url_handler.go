@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/VladislavKV-MSK/parsURL/models"
 	"github.com/VladislavKV-MSK/parsURL/storage"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type ShortenRequest struct {
@@ -21,6 +23,24 @@ func ShortenURL(repo storage.Repository) gin.HandlerFunc {
 		if err := c.ShouldBindJSON(&req); err != nil {
 			// Если JSON невалиден — возвращаем ошибку 400
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Сначала проверяем, есть ли уже такой URL в БД
+		existingURL, err := repo.FindByOriginalURL(req.URL)
+		if err == nil {
+			// URL уже существует - возвращаем существующую короткую ссылку
+			scheme := "http://"
+			if c.Request.TLS != nil {
+				scheme = "https://"
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"short_url":    scheme + c.Request.Host + "/" + existingURL.ShortCode,
+				"is_duplicate": true, // Добавляем флаг, что это существующая запись
+			})
+			return
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) { // Если ошибка и это не "не найдено" - возвращаем ошибку
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 			return
 		}
 
@@ -44,7 +64,8 @@ func ShortenURL(repo storage.Repository) gin.HandlerFunc {
 			scheme = "https://"
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"short_url": scheme + c.Request.Host + "/" + shortCode, // Полная короткая ссылка
+			"short_url":    scheme + c.Request.Host + "/" + shortCode, // Полная короткая ссылка
+			"is_duplicate": false,
 		})
 	}
 }

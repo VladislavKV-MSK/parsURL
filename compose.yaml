@@ -28,5 +28,14 @@ services:
     depends_on:
       db:
         condition: service_healthy  # Ждём, пока БД не станет готова
+  
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8000:80"
+    depends_on:
+      - app
 volumes: 
   postgres_data:

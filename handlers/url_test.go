@@ -31,6 +31,11 @@ func (m *MockRepository) FindByShortCode(shortCode string) (*models.URL, error) 
 	return args.Get(0).(*models.URL), args.Error(1)
 }
 
+// Заглушка для FindByOriginalURL - всегда возвращает "не найдено"
+func (m *MockRepository) FindByOriginalURL(originalURL string) (*models.URL, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
 func TestShortenURL(t *testing.T) {
 	// Тестовые случаи
 	tests := []struct {

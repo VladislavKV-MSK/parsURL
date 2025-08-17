@@ -8,6 +8,7 @@ import (
 type Repository interface {
 	Create(url *models.URL) error
 	FindByShortCode(shortCode string) (*models.URL, error)
+	FindByOriginalURL(originalURL string) (*models.URL, error)
 }
 
 type URLRepository struct {
@@ -25,5 +26,11 @@ func (r *URLRepository) Create(url *models.URL) error {
 func (r *URLRepository) FindByShortCode(shortCode string) (*models.URL, error) {
 	var url models.URL
 	err := r.db.Where("short_code = ?", shortCode).First(&url).Error
+	return &url, err
+}
+
+func (r *URLRepository) FindByOriginalURL(originalURL string) (*models.URL, error) {
+	var url models.URL
+	err := r.db.Where("original_url = ?", originalURL).First(&url).Error
 	return &url, err
 }
